@@ -19,7 +19,7 @@ jobs:
             architecture: 'x64'
           - os: ubuntu-18.04
             python-version: 3.10.0
-            android: true # إضافة هذا السطر
+            android: true
 
     runs-on: ${{ matrix.os }}
 
@@ -57,26 +57,21 @@ jobs:
           sudo apt-get install -y python3-setuptools python3-dev
           sudo apt-get install -y zip unzip
 
-      - name: Run Buildozer (optional)
+      - name: Download zbar dependencies for Android
+        if: runner.os == 'Ubuntu' && matrix.android == 'true'
+        run: |
+          mkdir -p zbar_dependencies
+          cd zbar_dependencies
+          curl -L -O "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libiconv-2.dll"
+          curl -L -O "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libzbar.so"  # أو أي مكتبة أخرى تحتاجها
+          cd ..
+
+      - name: Run Buildozer
         if: runner.os == 'Ubuntu' && matrix.android == 'true'
         run: |
           cd pyzbar
           buildozer init
           buildozer -v android debug
-          cd ..
-
-      - name: Download 32-bit DLLs
-        if: ${{ runner.os == 'Windows' && matrix.architecture == 'x86' }}
-        run: |
-          cd pyzbar
-          curl --location --remote-name-all "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/{libzbar-32.dll,libiconv-2.dll}"
-          cd ..
-
-      - name: Download 64-bit DLLs
-        if: ${{ runner.os == 'Windows' && matrix.architecture == 'x64' }}
-        run: |
-          cd pyzbar
-          curl --location --remote-name-all "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/{libzbar-64.dll,libiconv.dll}"
           cd ..
 
       - name: Run tests
