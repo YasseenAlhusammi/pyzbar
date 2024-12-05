@@ -18,9 +18,6 @@ architecture: 'x86'
 python-version: 3.10.0
 architecture: 'x64'
 
-basic
-
-Copy
 runs-on: ${{ matrix.os }}
 
 steps:
