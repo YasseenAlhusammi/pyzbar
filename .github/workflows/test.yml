@@ -6,8 +6,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-18.04]
-        python-version: [2.7, 3.6, 3.7, 3.8, 3.9, 3.10.0]
+        os: [ubuntu-latest]
+        python-version: [3.8, 3.9, 3.10]
         include:
           - os: macos-10.15
             python-version: 3.10.0
@@ -17,6 +17,9 @@ jobs:
           - os: windows-2019
             python-version: 3.10.0
             architecture: 'x64'
+          - os: ubuntu-latest
+            python-version: 3.10.0
+            android: true # إضافة هذا السطر
 
     runs-on: ${{ matrix.os }}
 
@@ -25,13 +28,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libzbar0 python-opencv
+          sudo apt-get install -y libzbar0 python-opencv build-essential python3-pip git openjdk-8-jdk
 
-      - name: Install macOS dependencies
-        if: runner.os == 'macOS'
+      # خطوة لتثبيت Buildozer
+      - name: Install Buildozer
+        if: runner.os == 'Ubuntu'
         run: |
-          brew update
-          brew install zbar
+          pip install buildozer
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -46,20 +49,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip==20.3.4
           pip install -r requirements-test.txt
-
-      - name: Download 32-bit DLLs
-        if: ${{ runner.os == 'Windows' && matrix.architecture == 'x86' }}
-        run: |
-          cd pyzbar
-          curl --location --remote-name-all "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/{libzbar-32.dll,libiconv-2.dll}"
-          cd ..
-
-      - name: Download 64-bit DLLs
-        if: ${{ runner.os == 'Windows' && matrix.architecture == 'x64' }}
-        run: |
-          cd pyzbar
-          curl --location --remote-name-all "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/{libzbar-64.dll,libiconv.dll}"
-          cd ..
 
       - name: Run tests
         run: pytest --verbose --cov=pyzbar pyzbar
