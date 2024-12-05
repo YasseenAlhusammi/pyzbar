@@ -6,36 +6,22 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-18.04]
-        python-version: [2.7, 3.6, 3.7, 3.8, 3.9, 3.10.0]
+        os: [ubuntu-18.04, windows-2019, macos-10.15]
+        python-version: [2.7, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13]
         include:
-          - os: macos-10.15
-            python-version: 3.10.0
+          - os: ubuntu-18.04
+            python-version: 3.10
+            android: true
           - os: windows-2019
-            python-version: 3.10.0
+            python-version: 3.10
             architecture: 'x86'
           - os: windows-2019
-            python-version: 3.10.0
+            python-version: 3.10
             architecture: 'x64'
-          - os: ubuntu-18.04
-            python-version: 3.10.0
-            android: true
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libzbar0 python-opencv build-essential python3-pip git openjdk-8-jdk
-
-      - name: Install macOS dependencies
-        if: runner.os == 'macOS'
-        run: |
-          brew update
-          brew install zbar
-
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -45,29 +31,46 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
 
-      - name: Install dependencies
+      - name: Install dependencies for Linux
+        if: runner.os == 'Linux'
         run: |
-          python -m pip install --upgrade pip==20.3.4
-          pip install -r requirements-test.txt
+          sudo apt-get update
+          sudo apt-get install -y libzbar0 python-opencv build-essential python3-pip git openjdk-8-jdk
+
+      - name: Install dependencies for Windows
+        if: runner.os == 'Windows'
+        run: |
+          curl -L -o zbar.dll "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libzbar-64.dll"  # تأكد من وجود الملفات المناسبة
+          curl -L -o iconv.dll "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libiconv.dll"
+
+      - name: Install dependencies for macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install zbar
 
       - name: Install Buildozer for Android
-        if: runner.os == 'Ubuntu' && matrix.android == 'true'
+        if: runner.os == 'Linux' && matrix.android == 'true'
         run: |
           pip install buildozer
-          sudo apt-get install -y python3-setuptools python3-dev
-          sudo apt-get install -y zip unzip
+          sudo apt-get install -y python3-setuptools python3-dev zip unzip
 
       - name: Download zbar dependencies for Android
-        if: runner.os == 'Ubuntu' && matrix.android == 'true'
+        if: runner.os == 'Linux' && matrix.android == 'true'
         run: |
           mkdir -p zbar_dependencies
           cd zbar_dependencies
           curl -L -O "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libiconv-2.dll"
-          curl -L -O "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libzbar.so"  # أو أي مكتبة أخرى تحتاجها
+          curl -L -O "https://github.com/NaturalHistoryMuseum/barcode-reader-dlls/releases/download/0.1/libzbar.so"
           cd ..
 
-      - name: Run Buildozer
-        if: runner.os == 'Ubuntu' && matrix.android == 'true'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip==20.3.4
+          pip install -r requirements-test.txt
+
+      - name: Run Buildozer for Android
+        if: runner.os == 'Linux' && matrix.android == 'true'
         run: |
           cd pyzbar
           buildozer init
@@ -78,7 +81,7 @@ jobs:
         run: pytest --verbose --cov=pyzbar pyzbar
 
       - name: Upload coverage
-        if: ${{ matrix.python-version == '3.10.0' && runner.os == 'Linux' }}
+        if: ${{ matrix.python-version == '3.10' && runner.os == 'Linux' }}
         run: |
           pip install coveralls>=3.2.0
           coveralls --service=github
